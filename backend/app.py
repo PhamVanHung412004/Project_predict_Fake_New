@@ -81,7 +81,7 @@ def load_model():
         # Load model
         vocab_size = len(vocabulary)
         embed_dim = 100
-        num_class = 2  # 0: Giả mạo, 1: Bình thường
+        num_class = 2  # 0: Fake, 1: Real
         
         model = TextClassificationModel(vocab_size, embed_dim, num_class)
         model.load_state_dict(torch.load('model/model_state.pth', map_location=device))
@@ -137,7 +137,7 @@ def predict():
         if prediction is None:
             return jsonify({'error': 'Prediction failed'}), 500
         
-        labels = {0: "Giả mạo", 1: "Bình thường"}
+        labels = {0: "Fake", 1: "Real"}
         result = {
             'prediction': prediction,
             'label': labels[prediction],

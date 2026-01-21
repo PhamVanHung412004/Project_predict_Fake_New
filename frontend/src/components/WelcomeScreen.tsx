@@ -22,26 +22,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptClick }) => {
   const features = [
     {
       icon: <ArticleIcon />,
-      title: "Phân tích văn bản",
-      description: "Kiểm tra độ tin cậy của tin tức"
+      title: "Text Analysis",
+      description: "Check the reliability of news"
     },
     {
       icon: <SpeedIcon />,
-      title: "Tốc độ nhanh",
-      description: "Kết quả trong vài giây"
+      title: "Fast Speed",
+      description: "Results in seconds"
     },
     {
       icon: <SecurityIcon />,
-      title: "Bảo mật cao",
-      description: "Dữ liệu được bảo vệ an toàn"
+      title: "High Security",
+      description: "Data is securely protected"
     }
   ];
 
   const examplePrompts = [
-    "Kiểm tra tin tức này có đáng tin không?",
-    "Phân tích độ tin cậy của bài báo này",
-    "Đây có phải là tin giả không?",
-    "Hãy kiểm tra thông tin này"
+    "Is this news reliable?",
+    "Analyze the credibility of this article",
+    "Is this fake news?",
+    "Please verify this information"
   ];
 
   return (
@@ -67,10 +67,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptClick }) => {
           <BotIcon sx={{ fontSize: 40 }} />
         </Avatar>
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, color: 'white' }}>
-          Chào mừng đến với AI Phát Hiện Tin Giả
+          Welcome to AI Fake News Detection
         </Typography>
         <Typography variant="h6" sx={{ mb: 3, color: '#b0b0b0' }}>
-          Tôi có thể giúp bạn kiểm tra độ tin cậy của bất kỳ tin tức nào
+          I can help you verify the reliability of any news
         </Typography>
       </Box>
 
@@ -115,7 +115,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptClick }) => {
       {/* Example Prompts */}
       <Box>
         <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
-          Bạn có thể hỏi tôi:
+          You can ask me:
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
           {examplePrompts.map((prompt, index) => (
@@ -149,8 +149,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptClick }) => {
         border: '1px solid #404040'
       }}>
         <Typography variant="body1" sx={{ color: '#b0b0b0' }}>
-          💡 <strong style={{ color: 'white' }}>Mẹo sử dụng:</strong> Gửi tin tức hoặc văn bản cho tôi, 
-          tôi sẽ phân tích và cho bạn biết độ tin cậy của thông tin đó.
+          💡 <strong style={{ color: 'white' }}>Usage Tip:</strong> Send me any news or text, 
+          and I will analyze and tell you how reliable that information is.
         </Typography>
       </Box>
     </Box>

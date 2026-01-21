@@ -83,7 +83,7 @@ const ChatInterface: React.FC = () => {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot',
-        content: `Tôi đã phân tích văn bản của bạn. Kết quả: **${response.data.label}** với độ tin cậy **${response.data.confidence}%**`,
+        content: `I have analyzed your text. Result: **${response.data.label}** with confidence **${response.data.confidence}%**`,
         timestamp: new Date(),
         analysis: {
           prediction: response.data.prediction,
@@ -95,7 +95,7 @@ const ChatInterface: React.FC = () => {
 
       setMessages(prev => [...prev, botMessage]);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Có lỗi xảy ra khi phân tích');
+      setError(err.response?.data?.error || 'An error occurred during analysis');
     } finally {
       setLoading(false);
     }
@@ -148,7 +148,7 @@ const ChatInterface: React.FC = () => {
         justifyContent: 'flex-end',
         borderBottom: '1px solid #3d3d3d'
       }}>
-        <Tooltip title="Xóa cuộc trò chuyện">
+        <Tooltip title="Clear conversation">
           <IconButton onClick={handleClearChat} sx={{ color: 'white' }}>
             <RefreshIcon />
           </IconButton>
@@ -219,7 +219,7 @@ const ChatInterface: React.FC = () => {
                         border: '1px solid #404040'
                       }}>
                         <Typography variant="subtitle2" gutterBottom sx={{ color: 'white' }}>
-                          📊 Phân tích chi tiết:
+                          📊 Detailed Analysis:
                         </Typography>
                         <Typography variant="body2" sx={{ color: '#b0b0b0' }}>
                           {message.analysis.analysis.analysis.summary}
@@ -257,7 +257,7 @@ const ChatInterface: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CircularProgress size={16} sx={{ color: 'white' }} />
                 <Typography variant="body2" sx={{ color: 'white' }}>
-                  AI đang phân tích...
+                  AI is analyzing...
                 </Typography>
               </Box>
             </Paper>
@@ -288,7 +288,7 @@ const ChatInterface: React.FC = () => {
             multiline
             maxRows={4}
             variant="outlined"
-            placeholder="Nhập tin tức cần kiểm tra..."
+            placeholder="Enter news to verify..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -346,10 +346,10 @@ const ChatInterface: React.FC = () => {
           mt: 1 
         }}>
           <Typography variant="caption" sx={{ color: '#808080' }}>
-            Nhấn Enter để gửi, Shift+Enter để xuống dòng
+            Press Enter to send, Shift+Enter for new line
           </Typography>
           <Typography variant="caption" sx={{ color: '#808080' }}>
-            {messages.length} tin nhắn
+            {messages.length} messages
           </Typography>
         </Box>
       </Paper>

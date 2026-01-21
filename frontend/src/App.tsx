@@ -64,7 +64,7 @@ function App() {
                 fontWeight: 600
               }}
             >
-              AI Phát Hiện Tin Giả
+              AI Fake News Detector
             </Typography>
             <Typography 
               variant="subtitle1" 
@@ -74,7 +74,7 @@ function App() {
                 color: '#b0b0b0'
               }}
             >
-              Chat với AI để kiểm tra độ tin cậy của tin tức
+              Chat with AI to verify news reliability
             </Typography>
           </Box>
         </Paper>

@@ -1,6 +1,7 @@
 import google.generativeai as genai
 from config import Config
 import logging
+from googletrans import Translator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,11 +18,30 @@ class GeminiService:
         try:
             genai.configure(api_key=Config.GEMINI_API_KEY)
             self.model = genai.GenerativeModel('gemini-2.0-flash')
+            self.translator = Translator()
             self.gemini_available = True
             logger.info("Gemini service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Gemini service: {e}")
             self.gemini_available = False
+
+    def _translate_text(self, text: str, target_lang: str = 'en') -> tuple[str, str]:
+        """
+        Translate text to target language
+        
+        Args:
+            text: Text to translate
+            target_lang: Target language code ('en' for English, 'vi' for Vietnamese)
+            
+        Returns:
+            tuple: (translated_text, source_language)
+        """
+        try:
+            translation = self.translator.translate(text, dest=target_lang)
+            return translation.text, translation.src
+        except Exception as e:
+            logger.error(f"Translation failed: {e}")
+            return text, 'unknown'
 
     def analyze_prediction(self, text: str, prediction: int, confidence: float, label: str) -> dict:
         """
@@ -31,7 +51,7 @@ class GeminiService:
             text: Original text that was analyzed
             prediction: Model prediction (0 or 1)
             confidence: Confidence score (0-100)
-            label: Human-readable label ("Giả mạo" or "Bình thường")
+            label: Human-readable label ("Fake" or "Real")
         
         Returns:
             dict: Analysis result with explanation
@@ -40,8 +60,11 @@ class GeminiService:
             return self._get_fallback_analysis(prediction, confidence, label)
         
         try:
+            # Translate text to English if it's in Vietnamese
+            translated_text, source_lang = self._translate_text(text)
+            
             # Create prompt for Gemini
-            prompt = self._create_analysis_prompt(text, prediction, confidence, label)
+            prompt = self._create_analysis_prompt(translated_text, prediction, confidence, label)
             
             # Generate response
             response = self.model.generate_content(prompt)
@@ -49,51 +72,87 @@ class GeminiService:
             # Parse response
             analysis = self._parse_gemini_response(response.text)
             
+            # If original text was in Vietnamese, translate the analysis back
+            if source_lang == 'vi':
+                analysis = self._translate_analysis_to_vietnamese(analysis)
+            
             return {
                 'success': True,
                 'analysis': analysis,
-                'source': 'gemini'
+                'source': 'gemini',
+                'translation_info': {
+                    'was_translated': source_lang == 'vi',
+                    'original_language': source_lang
+                }
             }
             
         except Exception as e:
             logger.error(f"Gemini analysis failed: {e}")
             return self._get_fallback_analysis(prediction, confidence, label)
 
+    def _translate_analysis_to_vietnamese(self, analysis: dict) -> dict:
+        """
+        Translate analysis results back to Vietnamese
+        """
+        try:
+            # Translate main fields
+            for field in ['summary', 'analysis', 'recommendations', 'confidence_explanation']:
+                if field in analysis:
+                    analysis[field], _ = self._translate_text(analysis[field], 'vi')
+            
+            # Translate indicators
+            if 'indicators' in analysis:
+                if 'fake_indicators' in analysis['indicators']:
+                    analysis['indicators']['fake_indicators'] = [
+                        self._translate_text(indicator, 'vi')[0]
+                        for indicator in analysis['indicators']['fake_indicators']
+                    ]
+                if 'real_indicators' in analysis['indicators']:
+                    analysis['indicators']['real_indicators'] = [
+                        self._translate_text(indicator, 'vi')[0]
+                        for indicator in analysis['indicators']['real_indicators']
+                    ]
+            
+            return analysis
+        except Exception as e:
+            logger.error(f"Translation back to Vietnamese failed: {e}")
+            return analysis
+
     def _create_analysis_prompt(self, text: str, prediction: int, confidence: float, label: str) -> str:
         """Create analysis prompt for Gemini"""
         
-        prediction_context = "tin giả" if prediction == 0 else "tin thật"
-        confidence_level = "cao" if confidence >= 80 else "trung bình" if confidence >= 60 else "thấp"
+        prediction_context = "fake news" if prediction == 0 else "real news"
+        confidence_level = "high" if confidence >= 80 else "medium" if confidence >= 60 else "low"
         
         prompt = f"""
-Bạn là một chuyên gia phân tích tin tức và phát hiện tin giả. Hãy phân tích văn bản sau dựa trên kết quả từ mô hình AI:
+You are a news analysis expert specializing in fake news detection. Please analyze the following text based on AI model results:
 
-VĂN BẢN CẦN PHÂN TÍCH:
+TEXT TO ANALYZE:
 "{text}"
 
-KẾT QUẢ MÔ HÌNH AI:
-- Dự đoán: {label} ({prediction_context})
-- Độ tin cậy: {confidence}% ({confidence_level})
+AI MODEL RESULTS:
+- Prediction: {label} ({prediction_context})
+- Confidence: {confidence}% ({confidence_level})
 
-Hãy cung cấp phân tích chi tiết theo định dạng JSON sau:
+Please provide a detailed analysis in the following JSON format:
 
 {{
-    "summary": "Tóm tắt ngắn gọn về văn bản và kết quả phân tích",
+    "summary": "Brief summary of the text and analysis results",
     "indicators": {{
-        "fake_indicators": ["danh sách các dấu hiệu cho thấy đây có thể là tin giả (nếu có)"],
-        "real_indicators": ["danh sách các dấu hiệu cho thấy đây có thể là tin thật (nếu có)"]
+        "fake_indicators": ["list of indicators suggesting this might be fake news (if any)"],
+        "real_indicators": ["list of indicators suggesting this might be real news (if any)"]
     }},
-    "analysis": "Phân tích chi tiết tại sao mô hình đưa ra kết quả này",
-    "recommendations": "Khuyến nghị cho người đọc về cách xử lý thông tin này",
-    "confidence_explanation": "Giải thích về độ tin cậy {confidence}% có nghĩa là gì"
+    "analysis": "Detailed analysis of why the model made this prediction",
+    "recommendations": "Recommendations for readers on how to handle this information",
+    "confidence_explanation": "Explanation of what the {confidence}% confidence means"
 }}
 
-Lưu ý:
-- Phân tích phải khách quan và dựa trên bằng chứng
-- Nếu là tin giả, hãy chỉ ra các dấu hiệu cụ thể
-- Nếu là tin thật, hãy giải thích các yếu tố đáng tin cậy
-- Luôn khuyến nghị kiểm tra thông tin từ nhiều nguồn
-- Trả lời bằng tiếng Việt
+Notes:
+- Analysis must be objective and evidence-based
+- If fake news, point out specific indicators
+- If real news, explain credibility factors
+- Always recommend checking information from multiple sources
+- Respond in English
 """
         return prompt
 
@@ -111,9 +170,9 @@ Lưu ý:
             else:
                 # Fallback if JSON parsing fails
                 return {
-                    "summary": "Phân tích từ Gemini AI",
+                    "summary": "Analysis from Gemini AI",
                     "analysis": response_text[:500] + "..." if len(response_text) > 500 else response_text,
-                    "recommendations": "Hãy kiểm tra thông tin từ nhiều nguồn đáng tin cậy"
+                    "recommendations": "Please verify information from multiple reliable sources"
                 }
         except Exception as e:
             logger.error(f"Failed to parse Gemini response: {e}")
@@ -130,18 +189,18 @@ Lưu ý:
             return {
                 'success': False,
                 'analysis': {
-                    'summary': f'Mô hình AI đã phân tích và xác định đây có thể là {label} với độ tin cậy {confidence}%',
+                    'summary': f'AI model has analyzed and determined this might be {label} with {confidence}% confidence',
                     'indicators': {
                         'fake_indicators': [
-                            'Ngôn ngữ cảm xúc mạnh mẽ',
-                            'Thiếu nguồn thông tin cụ thể',
-                            'Từ ngữ gây sốc hoặc kích động'
+                            'Strong emotional language',
+                            'Lack of specific sources',
+                            'Shocking or provocative wording'
                         ],
                         'real_indicators': []
                     },
-                    'analysis': f'Dựa trên phân tích của mô hình AI, văn bản này có {confidence}% khả năng là tin giả. Hãy cẩn thận và kiểm tra thông tin từ các nguồn đáng tin cậy.',
-                    'recommendations': 'Khuyến nghị kiểm tra thông tin từ các nguồn chính thức và đáng tin cậy trước khi chia sẻ.',
-                    'confidence_explanation': f'Độ tin cậy {confidence}% có nghĩa là mô hình AI khá chắc chắn về kết quả này.'
+                    'analysis': f'Based on AI model analysis, this text has a {confidence}% chance of being fake news. Please be cautious and verify information from reliable sources.',
+                    'recommendations': 'Recommend checking information from official and reliable sources before sharing.',
+                    'confidence_explanation': f'A confidence of {confidence}% means the AI model is quite certain about this result.'
                 },
                 'source': 'fallback'
             }
@@ -149,18 +208,18 @@ Lưu ý:
             return {
                 'success': False,
                 'analysis': {
-                    'summary': f'Mô hình AI đã phân tích và xác định đây có thể là {label} với độ tin cậy {confidence}%',
+                    'summary': f'AI model has analyzed and determined this might be {label} with {confidence}% confidence',
                     'indicators': {
                         'fake_indicators': [],
                         'real_indicators': [
-                            'Ngôn ngữ trung tính và khách quan',
-                            'Có thể có nguồn thông tin rõ ràng',
-                            'Từ ngữ chuyên nghiệp'
+                            'Neutral and objective language',
+                            'Clear information sources',
+                            'Professional wording'
                         ]
                     },
-                    'analysis': f'Dựa trên phân tích của mô hình AI, văn bản này có {confidence}% khả năng là tin thật. Tuy nhiên, hãy luôn kiểm tra thông tin từ nhiều nguồn.',
-                    'recommendations': 'Mặc dù có vẻ đáng tin cậy, hãy luôn kiểm tra thông tin từ các nguồn chính thức.',
-                    'confidence_explanation': f'Độ tin cậy {confidence}% có nghĩa là mô hình AI khá chắc chắn về kết quả này.'
+                    'analysis': f'Based on AI model analysis, this text has a {confidence}% chance of being real news. However, always verify information from multiple sources.',
+                    'recommendations': 'Although it appears reliable, always verify information from official sources.',
+                    'confidence_explanation': f'A confidence of {confidence}% means the AI model is quite certain about this result.'
                 },
                 'source': 'fallback'
             }
